@@ -1,5 +1,6 @@
 (ns ray.core
   (require [ray.vec :as v]
+           [ray.spectrum :as s]
            [quil.core :as q]
            [quil.middleware :as m]))
 
@@ -14,19 +15,21 @@
 (def sphere-center (v/->Vec 0 0 0))
 (def sphere-radius 1)
 (def light-pos (v/->Vec 10 10 10))
-(def light-power 3000)
+(def light-power (s/->Spectrum 4000 4000 4000))
 (def +no-hit+ (Float/POSITIVE_INFINITY))
+(def diffuse-color (s/->Spectrum 1 0.5 0.25))
 
-
-(defn diffuse-lighting [p n light-pos light-power]
+(defn diffuse-lighting [p n diffuse-color light-pos light-power]
   (let [v (v/- light-pos p)
         l (v/normalize v)
         dot (v/dot n l)]
     (if (> dot 0)
-      (let [r (v/length v)]
-        (/ (* light-power dot)
-           (* 4 (Math/PI) r r)))
-      0)))
+      (let [r (v/length v)
+            factor (/ dot (* 4 (Math/PI) r r))]
+        (println diffuse-color light-power factor)
+        (s/* (s/scale light-power factor)
+             diffuse-color))
+      s/+black+)))
 
 (defn intersect-ray-sphere [ray-origin ray-dir
                             sphere-center sphere-radius]
@@ -58,10 +61,9 @@
       (q/color 0)
       (let [p (v/+ eye (v/scale ray-dir t))
             n (v/normalize (v/- p sphere-center))
-            brightness (diffuse-lighting p n
-                                         light-pos light-power)
-            i (int (min (* brightness 255) 255))]
-        (q/color i)))))
+            l (diffuse-lighting p n diffuse-color
+                                light-pos light-power)]
+        (apply q/color (s/->color l))))))
 
 (defn setup []
   {:y 0})
@@ -83,14 +85,14 @@
 (defn key-released [state]
   state)
 
-(defn start []
-  (q/defsketch ray
-    :title "symphony"
-    :setup setup
-    :draw draw
-    :update update-state
-    :key-pressed key-pressed
-    :key-released key-released
-    :features [:size [640 480]
-               :resizable true]
-    :middleware [m/fun-mode m/pause-on-error]))
+
+(q/defsketch ray
+  :title "symphony"
+  :setup setup
+  :draw draw
+  :update update-state
+  :key-pressed key-pressed
+  :key-released key-released
+  :features [:size [640 480]
+             :resizable true]
+  :middleware [m/fun-mode m/pause-on-error])

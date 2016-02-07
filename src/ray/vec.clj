@@ -9,7 +9,7 @@
 (defn + [arg & vec-list]
   (let [vec-list (cons arg vec-list)]
     (apply ->Vec
-           (for [key [:x :y :z]]
+           (for [key (keys arg)]
              (loop [v (first vec-list)
                     rest-vec (rest vec-list)
                     acc 0]
@@ -24,7 +24,7 @@
       (scale arg -1)
       (let [vec-list (cons arg vec-list)]
         (apply ->Vec
-               (for [key [:x :y :z]]
+               (for [key (keys arg)]
                  (loop [v (second vec-list)
                         rest-vec (nthrest vec-list 2)
                         acc (key (first vec-list))]
