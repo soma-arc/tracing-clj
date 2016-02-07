@@ -7,6 +7,7 @@
 (defrecord Light [pos power])
 
 (def +no-hit+ (Float/POSITIVE_INFINITY))
+(def +epsilon+ 0.001)
 
 (defrecord Intersection [t p n material])
 
@@ -26,17 +27,17 @@
       (if (>= d 0)
         (let [s (Math/sqrt d)
               t (- (- b) s)
-              t (if (<= t 0) (- s b) t)]
-          (if (and (< 0 t) (< t (:t isect)))
+              t (if (<= t +epsilon+) (- s b) t)]
+          (if (and (< +epsilon+ t) (< t (:t isect)))
             (let [p (v/+ ray-origin (v/scale ray-dir t))
                   n (v/normalize (v/- p center))]
-              (assoc isect
-                     :t t
-                     :p p
-                     :n n
-                     :material material))
-            isect))
-        isect))))
+              [true (assoc isect
+                           :t t
+                           :p p
+                           :n n
+                           :material material)])
+            [false isect]))
+        [false isect]))))
 
 (defrecord Plane [n d material]
   Intersectable
@@ -45,13 +46,13 @@
           t (/ (- (+ (v/dot n ray-origin)
                      d))
                v)]
-      (if (and (< 0 t) (< t (:t isect)))
-        (assoc isect
-               :t t
-               :p (v/+ ray-origin (v/scale ray-dir t))
-               :n n
-               :material material)
-        (assoc isect :t +no-hit+)))))
+      (if (and (< +epsilon+ t) (< t (:t isect)))
+        [true (assoc isect
+                 :t t
+                 :p (v/+ ray-origin (v/scale ray-dir t))
+                 :n n
+                 :material material)]
+        [false (assoc isect :t +no-hit+)]))))
 
 (defn make-plane [p n material]
   (->Plane (v/normalize n)

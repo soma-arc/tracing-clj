@@ -16,14 +16,26 @@
     (loop [i 0
            isect isect]
       (if (< i (count obj-list))
-        (recur (inc i) (g/intersect (nth obj-list i) isect ray))
+        (recur (inc i) (second (g/intersect (nth obj-list i) isect ray)))
         isect))))
 
-(defn diffuse-lighting [p n diffuse-color light-pos light-power]
+(defn visible? [{:keys [obj-list] :as scene} org target]
+  (let [v (v/- target org)
+        shadow-ray (g/->Ray org (v/normalize v))
+        isect (g/->Intersection (v/length v) nil nil nil)
+        obj-num (count obj-list)]
+    (loop [i 0]
+      (if (< i obj-num)
+        (if (first (g/intersect (nth obj-list i) isect shadow-ray))
+          false
+          (recur (inc i)))
+        true))))
+
+(defn diffuse-lighting [scene p n diffuse-color light-pos light-power]
   (let [v (v/- light-pos p)
         l (v/normalize v)
         dot (v/dot n l)]
-    (if (> dot 0)
+    (if (and (> dot 0) (visible? scene p light-pos))
       (let [r (v/length v)
             factor (/ dot (* 4 (Math/PI) r r))]
         (s/* (s/scale light-power factor)
@@ -36,7 +48,8 @@
            l l]
       (if (< i (count light-list))
         (let [{light-pos :pos light-power :power} (nth light-list i)]
-          (recur (inc i) (s/+ l (diffuse-lighting p
+          (recur (inc i) (s/+ l (diffuse-lighting scene
+                                                  p
                                                   n
                                                   (:color material)
                                                   light-pos

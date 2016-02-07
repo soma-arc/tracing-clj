@@ -58,7 +58,7 @@
 
 
 (q/defsketch ray
-  :title "cast"
+  :title "trace"
   :setup setup
   :draw draw
   :update update-state
