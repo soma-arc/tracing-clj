@@ -3,6 +3,8 @@
            [ray.spectrum :as s]
            [ray.geometry :as g]))
 
+(def +max-depth+ 10)
+
 (defrecord Scene [obj-list light-list])
 
 (defn add-obj [scene obj]
@@ -56,8 +58,28 @@
                                                   light-power))))
         l))))
 
-(defn trace [scene ray]
-  (let [isect (find-nearest-intersection scene ray)]
-    (if (g/hit isect)
-      (lighting scene (:p isect) (:n isect) (:material isect))
-      s/+black+)))
+
+(defn reflect [v n]
+  (v/- v (v/scale n (* 2 (v/dot v n)))))
+
+(defn trace [scene {ray-dir :dir :as ray} depth]
+  (letfn [(trace-reflection [scene p n v depth]
+            (trace scene (g/->Ray p (reflect v n)) depth))]
+    (let [{material :material isect-p :p isect-n :n :as isect}
+          (find-nearest-intersection scene ray)
+          depth (inc depth)]
+      (if (or (not (g/hit isect))
+              (> depth +max-depth+))
+        s/+black+
+        (let [l s/+black+
+              ks (:reflection material)
+              l (if (> ks 0)
+                  (s/+ l (s/* (s/scale (trace-reflection scene isect-p isect-n ray-dir depth)
+                                       ks)
+                              (:color material)))
+                  l)
+              kd (- 1.0 ks)
+              l (if (> kd 0)
+                  (s/+ l (s/scale (lighting scene isect-p isect-n material) kd))
+                  l)]
+          l)))))
