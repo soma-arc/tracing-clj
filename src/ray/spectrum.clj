@@ -1,5 +1,4 @@
-(ns ray.spectrum
-  (require [quil.core :as q]))
+(ns ray.spectrum)
 
 (defrecord Spectrum [r g b])
 
