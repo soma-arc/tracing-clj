@@ -1,11 +1,12 @@
 (ns ray.geometry
   (require [ray.vec :as v]
-           [ray.spectrum :as s]
-           [quil.core :as q]))
+           [ray.spectrum :as s]))
 
 (defrecord Ray [origin dir])
-(defrecord Material [color reflection])
+(defrecord Material [color reflection refraction refractive-index])
 (defrecord Light [pos power])
+
+(def +vacuum-refractive-index+ 1.0)
 
 (def +no-hit+ (Float/POSITIVE_INFINITY))
 (def +epsilon+ 0.001)
@@ -44,20 +45,22 @@
   Intersectable
   (intersect [this isect {ray-origin :origin ray-dir :dir :as ray}]
     (let [v (v/dot n ray-dir)
-          t (/ (- (+ (v/dot n ray-origin)
-                     d))
-               v)]
+          t (if (< (Math/abs v) +epsilon+)
+              +no-hit+
+              (/ (- (+ (v/dot n ray-origin)
+                       d))
+                 v))]
       (if (and (< +epsilon+ t) (< t (:t isect)))
         [true (assoc isect
-                 :t t
-                 :p (v/+ ray-origin (v/scale ray-dir t))
-                 :n n
-                 :material material)]
+                     :t t
+                     :p (v/+ ray-origin (v/scale ray-dir t))
+                     :n n
+                     :material material)]
         [false (assoc isect :t +no-hit+)]))))
 
 (defn make-plane [p n material]
   (->Plane (v/normalize n)
-           (v/dot (v/- p) n)
+           (- (v/dot p n))
            material))
 
 (defrecord CheckedObj [obj inv-grid-size material2]
@@ -68,7 +71,7 @@
         (let [i (+ (Math/round (* (:x p) inv-grid-size))
                    (Math/round (* (:y p) inv-grid-size))
                    (Math/round (* (:z p) inv-grid-size)))]
-          [true (if (not= 0 (mod i 2))
+          [true (if (not= 0 (rem i 2))
                   (assoc isect :material material2)
                   isect)])
         [false isect]))))
