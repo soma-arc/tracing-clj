@@ -80,36 +80,37 @@
               (if (not= r nil)
                 (trace scene (g/->Ray p r) depth)
                 (trace-reflection scene p n v depth))))]
-    (let [{material :material
-           isect-p :p
-           isect-n :n :as isect} (find-nearest-intersection scene ray)
-          depth (inc depth)]
-      (if (or (not (g/hit isect))
-              (> depth +max-depth+))
-        s/+black+
-        (if (< (v/dot isect-n ray-dir) 0)
-          (let [l s/+black+
-                ks (:reflection material)
-                l (if (> ks 0)
-                    (s/+ l (s/* (s/scale (trace-reflection scene isect-p isect-n ray-dir depth)
-                                         ks)
-                                (:color material)))
-                    l)
-                kt (:refraction material)
-                l (if (> kt 0)
-                    (s/+ l (s/* (s/scale (trace-refraction scene isect-p isect-n ray-dir
-                                                           g/+vacuum-refractive-index+
-                                                           (:refractive-index material)
-                                                           depth)
-                                         kt)
-                                (:color material)))
-                    l)
-                kd (- 1.0 ks kt)
-                l (if (> kd 0)
-                    (s/+ l (s/scale (lighting scene isect-p isect-n material) kd))
-                    l)]
-            l)
-          (trace-refraction scene isect-p (v/- isect-n) ray-dir
-                            (:refractive-index material)
-                            g/+vacuum-refractive-index+
-                            depth))))))
+    (if (> (inc depth) +max-depth+)
+      s/+black+
+      (let [{material :material
+             isect-p :p
+             isect-n :n :as isect} (find-nearest-intersection scene ray)
+             depth (inc depth)]
+        (if (not (g/hit isect))
+          s/+black+
+          (if (< (v/dot isect-n ray-dir) 0)
+            (let [l s/+black+
+                  ks (:reflection material)
+                  l (if (> ks 0)
+                      (s/+ l (s/* (s/scale (trace-reflection scene isect-p isect-n ray-dir depth)
+                                           ks)
+                                  (:color material)))
+                      l)
+                  kt (:refraction material)
+                  l (if (> kt 0)
+                      (s/+ l (s/* (s/scale (trace-refraction scene isect-p isect-n ray-dir
+                                                             g/+vacuum-refractive-index+
+                                                             (:refractive-index material)
+                                                             depth)
+                                           kt)
+                                  (:color material)))
+                      l)
+                  kd (- 1.0 ks kt)
+                  l (if (> kd 0)
+                      (s/+ l (s/scale (lighting scene isect-p isect-n material) kd))
+                      l)]
+              l)
+            (trace-refraction scene isect-p (v/- isect-n) ray-dir
+                              (:refractive-index material)
+                              g/+vacuum-refractive-index+
+                              depth)))))))

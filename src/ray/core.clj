@@ -30,13 +30,19 @@
             (-> scene
                 (scene/add-obj (g/->Sphere (v/->Vec -2.1 0 0) 1
                                            (g/->Material (s/->Spectrum 0.9 0.1 0.9)
-                                                         0 0.9 1.3)))
+                                                         0 0.9 1.5)))
                 (scene/add-obj (g/->Sphere (v/->Vec 0 0 0) 1
                                            (g/->Material (s/->Spectrum 0.9 0.9 0.1)
-                                                         0 0.9 1.5)))
+                                                         0.8 0 1.5)))
                 (scene/add-obj (g/->Sphere (v/->Vec 2.1 0 0) 1
                                            (g/->Material (s/->Spectrum 0.1 0.9 0.9)
                                                          0 0.9 1.8)))
+
+                (scene/add-obj (g/->CheckedObj (g/make-plane (v/->Vec 0 0 -3) (v/->Vec 0 0 1)
+                                                             (g/->Material (s/->Spectrum 0.9 0.9 0.9)
+                                                                           0 0 0))
+                                               (/ 1.0 1.0) (g/->Material (s/->Spectrum 0.2 0.2 0.2)
+                                                                         0 0 0)))
                 (scene/add-obj (g/->CheckedObj (g/make-plane (v/->Vec 0 -1 0) (v/->Vec 0 1 0)
                                                              (g/->Material (s/->Spectrum 0.9 0.9 0.9)
                                                                            0 0 0))

@@ -56,7 +56,7 @@
                      :p (v/+ ray-origin (v/scale ray-dir t))
                      :n n
                      :material material)]
-        [false (assoc isect :t +no-hit+)]))))
+        [false isect]))))
 
 (defn make-plane [p n material]
   (->Plane (v/normalize n)
