@@ -3,7 +3,8 @@
            [ray.spectrum :as s]))
 
 (defrecord Ray [origin dir])
-(defrecord Material [color reflection refraction refractive-index])
+(defrecord Material [color reflection refraction refractive-index emissive-color])
+
 (defrecord Light [pos power])
 
 (def +vacuum-refractive-index+ 1.0)

@@ -2,8 +2,11 @@
   (require [ray.vec :as v]
            [ray.spectrum :as s]
            [ray.geometry :as g]))
+(in-ns 'ray.scene)
 
 (def +max-depth+ 10)
+
+(def +sky-color+ (s/->Spectrum 0.8 0.75 0.7))
 
 (defrecord Scene [obj-list light-list])
 
@@ -71,6 +74,94 @@
       (v/- (v/scale (v/- v (v/scale n dot)) eta)
            (v/scale n (Math/sqrt d)))
       nil)))
+
+(defn random-dir-over-hemisphere [n]
+  (let [[x y z] (loop []
+                  (let [x (* 2 (- (Math/random) 0.5))
+                        y (* 2 (- (Math/random) 0.5))
+                        z (* 2 (- (Math/random) 0.5))
+                        ll (+ (* x x)
+                              (* y y)
+                              (* z z))]
+                    (if (< 0.0 ll 1.0)
+                      [x y z]
+                      (recur))))
+        v (v/normalize (v/->Vec x y z))]
+    (if (< (v/dot v n) 0)
+      (v/- v)
+      v)))
+
+(defn path-trace [scene ray depth]
+  (letfn [(trace-diffuse-reflection [p n diffuse-color depth]
+            (let [r (random-dir-over-hemisphere n)
+                  li (path-trace scene (g/->Ray p r) depth)
+                  fr (s/scale diffuse-color (/ 1.0 Math/PI))
+                  dot (v/dot n r)]
+              (s/scale (s/* li fr) (* 2 Math/PI dot))))]
+    (if (> (inc depth) +max-depth+)
+      s/+black+
+      (let [{material :material
+             isect-p :p
+             isect-n :n :as isect} (find-nearest-intersection scene ray)]
+        (if (not (g/hit isect))
+          +sky-color+
+          (trace-diffuse-reflection isect-p isect-n
+                                    (:color material)
+                                    depth))))))
+
+(defn path-trace [scene {ray-dir :dir :as ray} depth]
+  (letfn [(trace-reflection [scene p n v depth]
+            (path-trace scene (g/->Ray p (reflect v n)) depth))
+          (trace-refraction [scene p n v eta-i eta-t depth]
+            (let [r (refract v n eta-i eta-t)]
+              (if (not= r nil)
+                (path-trace scene (g/->Ray p r) depth)
+                (trace-reflection scene p n v depth))))
+          (trace-diffuse-reflection [p n diffuse-color depth]
+            (let [r (random-dir-over-hemisphere n)
+                  li (path-trace scene (g/->Ray p r) depth)
+                  fr (s/scale diffuse-color (/ 1.0 Math/PI))
+                  dot (v/dot n r)]
+              (s/scale (s/* li fr) (* 2 Math/PI dot))))
+          (interact-surface [scene ray-dir p n {material-color :color
+                                                ks :reflection
+                                                kt :refraction :as m}
+                             eta-i eta-t depth]
+            (let [kd (- 1 ks kt)
+                  t (Math/random)]
+              (cond
+                (< t ks) (s/* (trace-reflection scene p n ray-dir depth)
+                              material-color)
+                (< t (+ ks kt)) (s/* (trace-refraction scene p n ray-dir
+                                                       eta-i eta-t depth)
+                                     material-color)
+                :else (trace-diffuse-reflection p n material-color depth))))]
+    (if (> (inc depth) +max-depth+)
+      s/+black+
+      (let [{material :material
+             isect-p :p
+             isect-n :n :as isect} (find-nearest-intersection scene ray)
+             depth (inc depth)]
+        (if (not (g/hit isect))
+          +sky-color+
+          (let [dot (v/dot isect-n ray-dir)]
+            (if (< dot 0)
+              (let [col (interact-surface scene
+                                          ray-dir
+                                          isect-p isect-n
+                                          material
+                                          g/+vacuum-refractive-index+
+                                          (:refractive-index material)
+                                          depth)]
+                (s/+ col (s/scale (:emissive-color material) (- dot))))
+              (interact-surface scene
+                                ray-dir
+                                isect-p
+                                (v/- isect-n)
+                                material
+                                (:refractive-index material)
+                                g/+vacuum-refractive-index+
+                                depth))))))))
 
 (defn trace [scene {ray-dir :dir :as ray} depth]
   (letfn [(trace-reflection [scene p n v depth]

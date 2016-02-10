@@ -2,6 +2,8 @@
 
 (defrecord Spectrum [r g b])
 
+(def +display-gamma+ 2.2)
+
 (defn scale [s scale]
   (apply ->Spectrum (for [key (keys s)]
                       (clojure.core/* (key s) scale))))
@@ -38,7 +40,8 @@
 
 (defn ->color [s]
   (for [key (keys s)]
-    (int (min (clojure.core/* (key s) 255)
+    (int (min (clojure.core/* (Math/pow (key s) (/ 1 +display-gamma+))
+                              255)
               255))))
 
 (def +black+ (->Spectrum 0 0 0))
